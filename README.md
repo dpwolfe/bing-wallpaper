@@ -34,6 +34,8 @@ Options:
   -p --picturedir <picture dir>  The full path to the picture download dir.
                                  Will be created if it does not exist.
                                  [default: $HOME/Pictures/bing-wallpapers/]
+  -i --index <index number>      The number of days to go back for the wallpaper to grab.
+                                 [default: 0]
   -h --help                      Show this screen.
   --version                      Show version.
 ```
