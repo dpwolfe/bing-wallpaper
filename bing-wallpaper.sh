@@ -33,6 +33,7 @@ print_message() {
 
 # Defaults
 PICTURE_DIR="$HOME/Pictures/bing-wallpapers/"
+INDEX="0"
 
 # Option parsing
 while [[ $# -gt 0 ]]; do
@@ -45,6 +46,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         -n|--filename)
             FILENAME="$2"
+            shift
+            ;;
+        -i|--index)
+            INDEX="$2"
             shift
             ;;
         -f|--force)
@@ -76,14 +81,15 @@ done
 # Set options
 [ $QUIET ] && CURL_QUIET='-s'
 [ $SSL ]   && PROTO='https'   || PROTO='http'
+TIME=$(($(date +'%s * 1000 + %-N / 1000000')))
 
 # Create picture directory if it doesn't already exist
 mkdir -p "${PICTURE_DIR}"
 
 # Parse bing.com and acquire picture URL(s)
-urls=( $(curl -sL $PROTO://www.bing.com | \
-    grep -Eo "url:'.*?'" | \
-    sed -e "s/url:'\([^']*\)'.*/$PROTO:\/\/bing.com\1/" | \
+urls=( $(curl -sL "$PROTO://www.bing.com/HPImageArchive.aspx?format=js&idx=$INDEX&n=1&nc=$TIME&pid=hp&video=0&quiz=0&fav=1" | \
+    grep -Eo "murl\":\"[^\"]*" | \
+    sed -e "s/murl\":\"\([^\"]*\)/\1/" | \
     sed -e "s/\\\//g") )
 
 for p in "${urls[@]}"; do
