@@ -33,7 +33,6 @@ print_message() {
 
 # Defaults
 PICTURE_DIR="$HOME/Pictures/bing-wallpapers/"
-INDEX="0"
 
 # Option parsing
 while [[ $# -gt 0 ]]; do
@@ -46,10 +45,6 @@ while [[ $# -gt 0 ]]; do
             ;;
         -n|--filename)
             FILENAME="$2"
-            shift
-            ;;
-        -i|--index)
-            INDEX="$2"
             shift
             ;;
         -f|--force)
@@ -81,16 +76,31 @@ done
 # Set options
 [ $QUIET ] && CURL_QUIET='-s'
 [ $SSL ]   && PROTO='https'   || PROTO='http'
-TIME=$(($(date +'%s * 1000 + %-N / 1000000')))
 
 # Create picture directory if it doesn't already exist
 mkdir -p "${PICTURE_DIR}"
 
 # Parse bing.com and acquire picture URL(s)
-urls=( $(curl -sL "$PROTO://www.bing.com/HPImageArchive.aspx?format=js&idx=$INDEX&n=1&nc=$TIME&pid=hp&video=0&quiz=0&fav=1" | \
-    grep -Eo "murl\":\"[^\"]*" | \
-    sed -e "s/murl\":\"\([^\"]*\)/\1/" | \
-    sed -e "s/\\\//g") )
+# This currently grabs tomorrow's image.
+urls=( $(curl -sL $PROTO://www.bing.com | \
+       grep -Eo "url:'.*?'" | \
+       sed -e "s/url:'\([^']*\)'.*/$PROTO:\/\/bing.com\1/" | \
+       sed -e "s/\\\//g") )
+
+# Use a direct API to easily access current and previous 7 images.
+# Requesting anymore than 8 or going past index 7 will only return
+# the url from index 7 as it is clamped server side.
+# You can visit the Bing gallery to find earlier days.
+for ((INDEX=0;INDEX<8;INDEX++)); do
+    TIME=$(($(date +'%s * 1000 + %-N / 1000000')))
+    url=( $(curl -sL "$PROTO://www.bing.com/HPImageArchive.aspx?format=js&idx=$INDEX&n=1&nc=$TIME&pid=hp&video=0&quiz=0&fav=1" | \
+          grep -Eo "murl\":\"[^\"]*" | \
+          sed -e "s/murl\":\"\([^\"]*\)/\1/" | \
+          # Images with cinemagraphs come with a low-quality thumb image that need to be transformed.
+          sed -e "s/_tmb/_1920x1080/" | \
+          sed -e "s/\\\//g") )
+    urls=("${urls[@]}" "${url[@]}")
+done
 
 for p in "${urls[@]}"; do
     if [ -z "$FILENAME" ]; then
